@@ -5,7 +5,7 @@ import openpyxl
 import re
 from openpyxl import Workbook
 
-possibleColTitle = ["id", "first name", "name"]
+possibleColTitle = ["id", "first name", "name", "student id"]
 
 searchField = 'ID'
 myPath = os.getcwd()
@@ -34,9 +34,10 @@ def setIDsDict(path: str, idDict: dict, status: bool):
     book = openpyxl.load_workbook(path)
     sheet = book.active
     maxRow = sheet.max_row
+    titleRow = findTitleRow(sheet)
     Col = findColByName(sheet, searchField)
 
-    for r in range(3, maxRow+1):
+    for r in range(titleRow+1, maxRow+1):
         id = sheet.cell(r, Col).value
         idDict[id] = status
 
