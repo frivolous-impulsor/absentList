@@ -75,8 +75,48 @@ def findColByTitles(sheet, titles: list[str]):
             return c
     raise ValueError("Make Sure \"ID\" or \"student id\" Is One Of the Col Title, or Update findColByName Function")
 
-def findDataStartingRow(sheet):
-    "todo"
+def dateTimeStr2Tuple(dateTime: str):
+    regex = r"(\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+)"
+    match = re.search(regex, dateTime)
+    dateTimeTuple = tuple(match.group(i+1) for i in range(5))
+    return dateTimeTuple
+
+def findDataStartingRow(sheet, anchorDateTime:str) -> int:
+    col = findColByTitles(sheet, ['time', 'timestamp'])
+    maxRow = sheet.max_row
+    anchorDateTime = dateTimeStr2Tuple(anchorDateTime)
+    for row in (1, maxRow+1):
+        currentDateTime = sheet.cell(row, col).value
+        currentDateTime = dateTimeStr2Tuple(currentDateTime)
+        if currentDateTime[:3] == anchorDateTime[:3]:
+            hourI = 3
+            minI = 4
+            currentHour = int(currentDateTime[hourI].lstrip('0'))
+            anchorHour = int(anchorDateTime[hourI].lstrip('0'))
+            currentMin = int(currentDateTime[minI].lstrip('0'))
+            anchorMin = int(anchorDateTime[minI].lstrip('0'))
+            if (currentHour == anchorHour and currentMin >= anchorMin) or (currentHour > anchorHour):
+                return row
+    raise ValueError("No value start after input date time, reconfirm the excel and/or date time")
+
+def findDataEndingRow(sheet, achorDateTime: str) -> int:
+    col = findColByTitles(sheet, ['time', 'timestamp'])
+    maxRow = sheet.max_row
+    lastRow = maxRow
+    anchorDateTime = dateTimeStr2Tuple(anchorDateTime)
+    for row in (1, maxRow+1):
+        currentDateTime = sheet.cell(row, col).value
+        currentDateTime = dateTimeStr2Tuple(currentDateTime)
+        currentYear = currentDateTime[2]
+        currentMon = currentDateTime[1]
+        currentDay = currentDateTime[0]
+        anchorYear = anchorDateTime[2]
+        anchorMon = anchorDateTime[1]
+        anchorDay = anchorDateTime[0]
+        if currentYear
+            
+        
+
 
 
 def setIDsDict(path: str, idDict: dict, status: bool):
