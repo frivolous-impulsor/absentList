@@ -11,41 +11,56 @@ possibleColTitle = ["id", "first name", "name", "student id"]
 searchField = ['id', 'student id']
 myPath = os.getcwd()
 logDir = 'checkInLogs'
-minorDir = join(myPath, logDir)
+logDir = join(myPath, logDir)
 
 def isExactOneArg() -> bool:
     return len(sys.argv) == 2
 
-def getMasterFile() -> str:
+def getMasterName() -> str:
     if isExactOneArg():
         return sys.argv[1]
     raise ValueError("Ensure Exactly One Master Sheet After the Program!")
 
-def getMinorFiles() -> list[str]:
-    return [join(minorDir, f) for f in listdir(minorDir) if (isfile(join(minorDir, f)) and bool(re.search('.xlsx', f)) and f != getMasterFile())]
 
-def translateCSV2XLSX(csvAddress: str):
+
+def translateCSV2XLSX(csvAddress: str) -> str:
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     
     with open(csvAddress) as csvFile:
         csvData = csv.reader(csvFile, delimiter=',')
-    for row in csvData:
-        sheet.append(row)
+        for row in csvData:
+            sheet.append(row)
     xlsxAddress = csvAddress.replace(".csv", ".xlsx")
     workbook.save(xlsxAddress)
+    return xlsxAddress
 
-def ensureXLSX(fileName):
+def ensureXLSX(fileName) -> str:
     excelExt = '.xlsx'
     csvExt = '.csv'
     if excelExt in fileName and not (csvExt in fileName):
-        return 0
+        return fileName
     if csvExt in fileName and not (excelExt in fileName):
-        translateCSV2XLSX(fileName)
-        return 1
+        return translateCSV2XLSX(fileName)
     raise TypeError("checkInLogs consists files outside xlsx or csv! remove them")
-    
-    
+
+
+
+def getLogFiles() -> list[str]:
+    masterName = getMasterName()
+    logFiles = set()
+    for fileName in listdir(logDir):
+        if masterName == fileName: raise FileExistsError("master file should NOT exist in check in log directory, remove it")
+        fileAddress = join(logDir, fileName)
+        if isfile(fileAddress):
+            xlsxAddress = ensureXLSX(fileAddress)
+            logFiles.add(xlsxAddress)
+            
+        else:
+            raise FileExistsError(f"non-file object in checkInLogs, remove {fileName}")
+    return logFiles
+
+
 def findTitleRow(sheet) -> int:
     for r in range(1, 5):
         for c in range(1, sheet.max_column+1):
@@ -88,5 +103,10 @@ def diffIDs(masterPath: str, minorPaths: list[str]):
             absentIDs.append(key)
     return absentIDs
 
-resultIDs = diffIDs("master.xlsx", getMinorFiles())
-print(resultIDs)
+def main():
+    masterFileAddress = getMasterName()
+    logFileAddresses = getLogFiles()
+    resultIDs = diffIDs(masterFileAddress, logFileAddresses)
+    print(resultIDs)
+
+main()
