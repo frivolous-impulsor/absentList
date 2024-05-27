@@ -15,13 +15,17 @@ logDir = join(myPath, logDir)
 
 beginTime = "5/22/2024 13:00:00"
 
-def isExactOneArg() -> bool:
-    return len(sys.argv) == 2
-
 def getMasterName() -> str:
-    if isExactOneArg():
-        return sys.argv[1]
-    raise ValueError("Ensure Exactly One Master Sheet After the Program!")
+    if len(sys.argv) > 1 and type(sys.argv[1]) == type("str"):
+        masterName = sys.argv[1]
+        if len(masterName) > 2 and masterName[0] == '.':
+            masterName = masterName[2:]
+        if masterName in listdir(myPath) and isfile(join(myPath, masterName)):
+            return masterName
+        else:
+            raise ValueError("the master sheet should be in current(same as the py script) directory")
+    else:
+        raise ValueError("ensure the first argument is a valid name of a xlsx file being the master sheet")
 
 
 
@@ -161,24 +165,32 @@ def main():
     masterFileAddress = getMasterName()
     logFileAddresses = getLogFiles()
     resultIDs = diffIDs(masterFileAddress, logFileAddresses)
-    print(sorted(resultIDs))
-    print(len(resultIDs))
+    return resultIDs
 
-main()
+def test():
+    result = main()
 
+    book = openpyxl.load_workbook("Absence List - C2_HealthSciences_ASN.xlsx")
+    sheet = book["Absent"]
 
-""" results = ['000753041', '001134985', '001139572', '001147237', '001152170', '001210943', '001219510', '001300699', '001315037', '001335315', '001415044', '001419807', '001437219', '400009243', '400009502', '400016397', '400022002', '400025264', '400030771', '400066785', '400071530', '400083999', '400107526', '400132382', '400136304', '400139358', '400164152', '400168872', '400172765', '400177619', '400197345', '400212431', '400224393', '400232595', '400288553', '400288749', '400311990', '400316036', '400318202', '400320751', '400320769', '400322709', '400325095', '400330742', '400341942', '400341947', '400352961', '400353316', '400353406', '400353411', '400353418', '400353740', '400357272', '400390217', '400425629', '400425630', '400425641', '400425657', '400425725', '400425729', '400425757', '400425767', '400425770', '400425780', '400425781', '400463214', '400467650', '400474557', '400475682', '400476638', '400480075', '400480132', '400485328']
+    answer = []
+    for row in range(1, sheet.max_row+1):
+        id = sheet.cell(row, 3).value
+        answer.append(id)
 
-answerPath = "Absent list_C3_Nursing_ASN.xlsx"
-answerBook = openpyxl.load_workbook(answerPath)
-answerSheet = answerBook["Absent"]
-answerIDs = []
-for row in range(1, answerSheet.max_row+1):
-    answerId = answerSheet.cell(row, 3).value
-    answerIDs.append(answerId)
-answerIDs = answerIDs[2:]
-print(answerIDs)
+    resultCOMPanswer = []
+    answerCOMPresult = []
 
-for answerId in answerIDs:
-    if answerId not in results:
-        print(answerId) """
+    for id in answer:
+        if id not in result:
+            resultCOMPanswer.append(id)
+
+    for id in result:
+        if id not in answer:
+            answerCOMPresult.append(id)
+
+    print(resultCOMPanswer)
+    print(answerCOMPresult)
+
+test()
+        
