@@ -1,19 +1,41 @@
 import os
 import sys
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, exists
 import openpyxl
 import re
 import csv
+import shutil
+
+import openpyxl.worksheet
 
 possibleColTitle = ["id", "first name", "name", "student id"]
 
 searchField = ['id', 'student id']
 myPath = os.getcwd()
+
 logDir = 'checkInLogs'
 logDir = join(myPath, logDir)
 
-beginTime = "5/22/2024 13:00:00"
+
+
+beginTime = sys.argv[2]
+
+def argumentLock() -> bool:
+    argv = sys.argv
+    if len(argv) != 3:
+        raise ValueError("must have 2 arguments, first being the master sheet, second being the starting date and time with form mm/dd/yy hh:mm:ss, enclose with \"\"")
+    if not (type(argv[1]) == type(argv[2]) and type(argv[1]) == type("str")):
+        raise ValueError("2 arguments must be of string")
+    argv1 = argv[1]
+    argv2 = argv[2]
+    match1 = re.match(".*xlsx", argv1)
+    match2 = re.match(r"\d+/\d+/\d+ \d+:\d+:\d+", argv2)
+    if not match1:
+        raise ValueError("must be a xlsx file at root directory")
+    if not match2:
+        raise ValueError("must be of form mm/dd/yy hh:mm:ss, enclose with \"\"")
+
 
 def getMasterName() -> str:
     if len(sys.argv) > 1 and type(sys.argv[1]) == type("str"):
@@ -50,8 +72,6 @@ def ensureXLSX(fileName) -> str:
         return translateCSV2XLSX(fileName)
     raise TypeError("checkInLogs consists files outside xlsx or csv! remove them")
 
-
-
 def getLogFiles() -> list[str]:
     masterName = getMasterName()
     logFiles = set()
@@ -65,7 +85,6 @@ def getLogFiles() -> list[str]:
         else:
             raise FileExistsError(f"non-file object in checkInLogs, remove {fileName}")
     return logFiles
-
 
 def findTitleRow(sheet) -> int:
     for r in range(1, 5):
@@ -86,7 +105,6 @@ def dateTimeStr2Tuple(dateTime: str):
     match = re.search(regex, dateTime)
     dateTimeTuple = tuple(match.group(i+1) for i in range(6))
     return dateTimeTuple
-
 
 def removeLeadZero(str: str):
     str.lstrip('0')
@@ -126,10 +144,6 @@ def findDataEndingRow(sheet, anchorDateTime: str) -> int:
             endRow = row
     if endRow == 0: raise ValueError("no entry in check log with given date")
     return endRow
-        
-        
-
-
 
 def setIDsDict(path: str, idDict: dict, isLog: bool):
     book = openpyxl.load_workbook(path)
@@ -147,50 +161,109 @@ def setIDsDict(path: str, idDict: dict, isLog: bool):
         if id != None and id.isnumeric():
             idDict[id] = isLog
 
-
-
-def diffIDs(masterPath: str, minorPaths: list[str]):
+def diffIDs(masterPath: str, minorPaths: list[str]) -> dict:
     IDdict = {}
     setIDsDict(masterPath, IDdict, False)
     for minor in minorPaths:
         setIDsDict(minor, IDdict, True)
+    return IDdict
 
-    absentIDs = []
-    for key in IDdict.keys():
-        if not IDdict[key]:
-            absentIDs.append(key)
-    return absentIDs
+def createDir(path) -> int:
+    if not exists(path):
+        os.makedirs(path)
+        return 1
+    return 0
 
-def main():
+def writeList(idDict, resultDir: str) -> None:
+    absentName = "absentList.xlsx"
+    attendName = "attendList.xlsx"
+    source = getMasterName()
+    absentdst = join(resultDir, absentName)
+    attenddst = join(resultDir, attendName)
+    destAbsentAddress = shutil.copyfile(source, absentdst)
+    destAttendAddress = shutil.copyfile(source, attenddst)
+    
+    absentBook = openpyxl.load_workbook(destAbsentAddress)
+    absentSheet = absentBook.active
+
+    attendBook = openpyxl.load_workbook(destAttendAddress)
+    attendSheet = attendBook.active
+
+
+    idCol = findColByTitles(absentSheet, searchField)
+    for row in range(absentSheet.max_row+1, 1, -1):
+        cellValue = absentSheet.cell(row, idCol).value
+        if cellValue is not None and (cellValue in idDict.keys()):
+            if idDict[cellValue]:
+                absentSheet.delete_rows(row)
+            else:
+                attendSheet.delete_rows(row)
+    
+    absentBook.save(destAbsentAddress)
+    attendBook.save(destAttendAddress)
+
+def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
+    mergeName = "mergedCheckedIn.xlsx"
+    mergeAddress = join(dstDir, mergeName)
+    mergeBook = openpyxl.Workbook()
+    mergeSheet = mergeBook.active
+
+    for fileAddress in logFileAddresses:
+        logBook = openpyxl.load_workbook(fileAddress)
+        sheet = logBook.active
+        idCol = findColByTitles(sheet, searchField)
+        try: startRow = findDataStartingRow(sheet, beginTime)
+        except ValueError: continue
+        endRow = findDataEndingRow(sheet, beginTime)
+        for row in sheet.iter_rows(startRow, endRow+1):
+            idVal = row[idCol].value
+            if idVal != None:
+                rowVals = [cell.value for cell in row]
+                mergeSheet.append(rowVals)
+        mergeBook.save(mergeAddress)
+        
+
+def main() -> None:
+    argumentLock()
     masterFileAddress = getMasterName()
     logFileAddresses = getLogFiles()
-    resultIDs = diffIDs(masterFileAddress, logFileAddresses)
-    return resultIDs
+    idDict = diffIDs(masterFileAddress, logFileAddresses)
+
+    resultDirName = "result"
+    createDir(resultDirName)
+    writeList(idDict, resultDirName)
 
 def test():
-    result = main()
+    
+    logFileAddresses = getLogFiles()
+    mergeCheckinLogs(logFileAddresses, "result")
 
-    book = openpyxl.load_workbook("Absence List - C2_HealthSciences_ASN.xlsx")
-    sheet = book["Absent"]
+attendListBook = openpyxl.load_workbook("result/attendList.xlsx")
+attendSheet = attendListBook.active
 
-    answer = []
-    for row in range(1, sheet.max_row+1):
-        id = sheet.cell(row, 3).value
-        answer.append(id)
+mergeBook = openpyxl.load_workbook("result/mergedCheckedIn.xlsx")
+mergeSheet = mergeBook.active
 
-    resultCOMPanswer = []
-    answerCOMPresult = []
+attendIds = []
+mergeIds = []
 
-    for id in answer:
-        if id not in result:
-            resultCOMPanswer.append(id)
+for row in range(1, attendSheet.max_row):
+    id = attendSheet.cell(row, 3).value
+    attendIds.append(id)
 
-    for id in result:
-        if id not in answer:
-            answerCOMPresult.append(id)
+for row in range(1, mergeSheet.max_row):
+    id = mergeSheet.cell(row, 10).value
+    mergeIds.append(id)
 
-    print(resultCOMPanswer)
-    print(answerCOMPresult)
 
-test()
-        
+print("in attend, not in merge:")
+for id in attendIds:
+    if not id in mergeIds:
+        print(id)
+
+
+print("int merge, not in attend:")
+for id in mergeIds:
+    if not id in attendIds:
+        print(id)
+
