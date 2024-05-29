@@ -181,10 +181,10 @@ def writeList(idDict, resultDir: str) -> None:
     destAttendAddress = shutil.copyfile(source, attenddst)
     
     absentBook = openpyxl.load_workbook(destAbsentAddress)
-    absentSheet = absentBook.active
+    absentSheet = absentBook[(absentBook.sheetnames)[0]]
 
     attendBook = openpyxl.load_workbook(destAttendAddress)
-    attendSheet = attendBook.active
+    attendSheet = attendBook[(attendBook.sheetnames)[0]]
 
 
     idCol = findColByTitles(absentSheet, searchField)
@@ -206,15 +206,32 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
     mergeBook = openpyxl.Workbook()
     mergeSheet = mergeBook.active
 
+    titled = False
+    titleFileAddress = ""
+    for fileAddress in logFileAddresses:
+        if not titled:
+            titleFileAddress = fileAddress
+            titled = True
+        else:
+            break
+
+    titleBook = openpyxl.load_workbook(titleFileAddress)
+    titleSheet = titleBook[(titleBook.sheetnames)[0]]
+    titleRow = findTitleRow(titleSheet)
+    titleVals = [cell.value for cell in titleSheet[titleRow]]
+    mergeSheet.append(titleVals)
+
     for fileAddress in logFileAddresses:
         logBook = openpyxl.load_workbook(fileAddress)
-        sheet = logBook.active
+        sheet = logBook[(logBook.sheetnames)[0]]
+        idCod = findColByTitles(sheet, searchField)
         try: startRow = findDataStartingRow(sheet, beginTime)
         except ValueError: continue
         endRow = findDataEndingRow(sheet, endTime)
         for row in sheet.iter_rows(min_row=startRow, max_row=endRow):
-            rowVals = [cell.value for cell in row]
-            mergeSheet.append(rowVals)
+            if row[idCod-1].value != None or row[idCod].value != None or row[idCod+1].value != None:
+                rowVals = [cell.value for cell in row]
+                mergeSheet.append(rowVals)
     mergeBook.save(mergeAddress)
         
 
@@ -231,25 +248,25 @@ def main() -> None:
     mergeCheckinLogs(logFileAddresses, resultDirName)
 
 def test():
-    attendListBook = openpyxl.load_workbook("Absence List - C2_HealthSciences_ASN.xlsx")
-    attendSheet = attendListBook['Checked In']
+    attendListBook = openpyxl.load_workbook("result/attendList.xlsx")
+    attendSheet = attendListBook[(attendListBook.sheetnames)[0]]
 
     mergeBook = openpyxl.load_workbook("result/mergedCheckedIn.xlsx")
-    mergeSheet = mergeBook.active
+    mergeSheet = mergeBook[(mergeBook.sheetnames)[0]]
 
     attendIds = []
     mergeIds = []
 
     for row in range(1, attendSheet.max_row+1):
-        id = attendSheet.cell(row, 10).value
-        attendIds.append(str(id))
+        id = attendSheet.cell(row, 3).value
+        attendIds.append(id)
 
     for row in range(1, mergeSheet.max_row+1):
         id = mergeSheet.cell(row, 10).value
-        mergeIds.append(str(id).lstrip('0'))
+        mergeIds.append(id)
 
 
-    print("in mansor, not in merge:")
+    print("in attend, not in merge:")
     for id in attendIds:
         if not id in mergeIds:
             print(id)
@@ -259,6 +276,9 @@ def test():
     for id in mergeIds:
         if not id in attendIds:
             print(id)
+    
+    print(f"{len(attendIds)}ss")
+    print(len(mergeIds))
 
 main()
 test()
