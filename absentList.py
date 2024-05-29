@@ -8,7 +8,7 @@ import openpyxl
 import re
 import csv
 import shutil
-
+from datetime import datetime, timedelta
 import openpyxl.worksheet
 
 possibleColTitle = ["id", "first name", "name", "student id"]
@@ -19,16 +19,12 @@ myPath = os.getcwd()
 logDir = 'checkInLogs'
 logDir = join(myPath, logDir)
 
-
-
-beginTime = sys.argv[2]
-
 def argumentLock() -> bool:
     argv = sys.argv
-    if len(argv) != 3:
-        raise ValueError("must have 2 arguments, first being the master sheet, second being the starting date and time with form mm/dd/yy hh:mm:ss, enclose with \"\"")
+    if len(argv) != 4:
+        raise ValueError("must have 3 arguments, first being the master sheet, second and third being the starting and ending date and time with form mm/dd/yy hh:mm:ss, enclose with \"\"")
     if not (type(argv[1]) == type(argv[2]) and type(argv[1]) == type("str")):
-        raise ValueError("2 arguments must be of string")
+        raise ValueError("3 arguments must be of string")
     argv1 = argv[1]
     argv2 = argv[2]
     match1 = re.match(".*xlsx", argv1)
@@ -37,6 +33,12 @@ def argumentLock() -> bool:
         raise ValueError("must be a xlsx file at root directory")
     if not match2:
         raise ValueError("must be of form mm/dd/yy hh:mm:ss, enclose with \"\"")
+
+argumentLock()
+beginTime = sys.argv[2]
+endTime = sys.argv[3]
+
+
 
 
 def getMasterName() -> str:
@@ -134,7 +136,8 @@ def findDataEndingRow(sheet, anchorDateTime: str) -> int:
         currentDateTime = sheet.cell(row, col).value
         currentDateTime = dateTimeStr2Tuple(currentDateTime)
         if currentDateTime[:3] == anchorDateTime[:3]:
-            endRow = row
+            if currentDateTime[3] < anchorDateTime[3] or (currentDateTime[3] == anchorDateTime[3] and currentDateTime[4] <= anchorDateTime[4]): 
+                endRow = row
     if endRow == 0: raise ValueError("no entry in check log with given date")
     return endRow
 
@@ -146,7 +149,7 @@ def setIDsDict(path: str, idDict: dict, isLog: bool):
     if isLog:
         try: startRow = findDataStartingRow(sheet, beginTime)
         except ValueError: return
-        endRow = findDataEndingRow(sheet, beginTime)
+        endRow = findDataEndingRow(sheet, endTime)
     else:
         startRow = findTitleRow(sheet)
         endRow = sheet.max_row
@@ -208,7 +211,7 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
         sheet = logBook.active
         try: startRow = findDataStartingRow(sheet, beginTime)
         except ValueError: continue
-        endRow = findDataEndingRow(sheet, beginTime)
+        endRow = findDataEndingRow(sheet, endTime)
         for row in sheet.iter_rows(min_row=startRow, max_row=endRow):
             rowVals = [cell.value for cell in row]
             mergeSheet.append(rowVals)
@@ -258,3 +261,4 @@ def test():
             print(id)
 
 main()
+test()

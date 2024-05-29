@@ -1,5 +1,7 @@
-1. Put all xlsx files in the root dir with absentList.py files
-2. Ensure there's exactly one master file named "master.xlsx"
-3. Ensure all xlsx files have either "ID" or "student id" as one of the col title
-4. >>>python absentList.py > absent.txt   
-5. Run the command and a list of id of absent grads will be stored in absent.txt
+1. Put all check log files in directory "checkInLogs", create it if it's not there
+2. Ensure there's exactly one master file at the root directory
+3. Ensure all files have either "ID" or "student id" as one of the col title
+4. >>>python absentList.py <master_sheet.xlsx> <start date time> <end date time>
+#where master_sheet.xlsx is the name of the master file
+#date time is of form "mm/dd/yy hh:mm:ss" 
+5. Run the command and the absentList.xlsx, attendList.xlsx, and mergedCheckIn.xlsx will be generated in directory "result"
