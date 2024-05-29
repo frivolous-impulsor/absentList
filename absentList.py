@@ -1,3 +1,5 @@
+#By Mansor and olivger 
+
 import os
 import sys
 from os import listdir
@@ -38,16 +40,7 @@ def argumentLock() -> bool:
 
 
 def getMasterName() -> str:
-    if len(sys.argv) > 1 and type(sys.argv[1]) == type("str"):
-        masterName = sys.argv[1]
-        if len(masterName) > 2 and masterName[0] == '.':
-            masterName = masterName[2:]
-        if masterName in listdir(myPath) and isfile(join(myPath, masterName)):
-            return masterName
-        else:
-            raise ValueError("the master sheet should be in current(same as the py script) directory")
-    else:
-        raise ValueError("ensure the first argument is a valid name of a xlsx file being the master sheet")
+    return sys.argv[1]
 
 
 
@@ -87,7 +80,7 @@ def getLogFiles() -> list[str]:
     return logFiles
 
 def findTitleRow(sheet) -> int:
-    for r in range(1, 5):
+    for r in range(1, sheet.max_row+1):
         for c in range(1, sheet.max_column+1):
             if (sheet.cell(r, c).value != None) and type(sheet.cell(r,c).value) == type('str') and (sheet.cell(r, c).value.lower() in possibleColTitle):
                 return r
@@ -147,7 +140,8 @@ def findDataEndingRow(sheet, anchorDateTime: str) -> int:
 
 def setIDsDict(path: str, idDict: dict, isLog: bool):
     book = openpyxl.load_workbook(path)
-    sheet = book.active
+    sheetNames = book.sheetnames
+    sheet = book[sheetNames[0]]
     idCol = findColByTitles(sheet, searchField)
     if isLog:
         try: startRow = findDataStartingRow(sheet, beginTime)
@@ -191,7 +185,8 @@ def writeList(idDict, resultDir: str) -> None:
 
 
     idCol = findColByTitles(absentSheet, searchField)
-    for row in range(absentSheet.max_row+1, 1, -1):
+    rng = reversed(range(1, absentSheet.max_row+1))
+    for row in rng:
         cellValue = absentSheet.cell(row, idCol).value
         if cellValue is not None and (cellValue in idDict.keys()):
             if idDict[cellValue]:
@@ -211,16 +206,13 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
     for fileAddress in logFileAddresses:
         logBook = openpyxl.load_workbook(fileAddress)
         sheet = logBook.active
-        idCol = findColByTitles(sheet, searchField)
         try: startRow = findDataStartingRow(sheet, beginTime)
         except ValueError: continue
         endRow = findDataEndingRow(sheet, beginTime)
-        for row in sheet.iter_rows(startRow, endRow+1):
-            idVal = row[idCol].value
-            if idVal != None:
-                rowVals = [cell.value for cell in row]
-                mergeSheet.append(rowVals)
-        mergeBook.save(mergeAddress)
+        for row in sheet.iter_rows(min_row=startRow, max_row=endRow):
+            rowVals = [cell.value for cell in row]
+            mergeSheet.append(rowVals)
+    mergeBook.save(mergeAddress)
         
 
 def main() -> None:
@@ -232,38 +224,37 @@ def main() -> None:
     resultDirName = "result"
     createDir(resultDirName)
     writeList(idDict, resultDirName)
+    
+    mergeCheckinLogs(logFileAddresses, resultDirName)
 
 def test():
-    
-    logFileAddresses = getLogFiles()
-    mergeCheckinLogs(logFileAddresses, "result")
+    attendListBook = openpyxl.load_workbook("Absence List - C2_HealthSciences_ASN.xlsx")
+    attendSheet = attendListBook['Checked In']
 
-attendListBook = openpyxl.load_workbook("result/attendList.xlsx")
-attendSheet = attendListBook.active
+    mergeBook = openpyxl.load_workbook("result/mergedCheckedIn.xlsx")
+    mergeSheet = mergeBook.active
 
-mergeBook = openpyxl.load_workbook("result/mergedCheckedIn.xlsx")
-mergeSheet = mergeBook.active
+    attendIds = []
+    mergeIds = []
 
-attendIds = []
-mergeIds = []
+    for row in range(1, attendSheet.max_row+1):
+        id = attendSheet.cell(row, 10).value
+        attendIds.append(str(id))
 
-for row in range(1, attendSheet.max_row):
-    id = attendSheet.cell(row, 3).value
-    attendIds.append(id)
-
-for row in range(1, mergeSheet.max_row):
-    id = mergeSheet.cell(row, 10).value
-    mergeIds.append(id)
+    for row in range(1, mergeSheet.max_row+1):
+        id = mergeSheet.cell(row, 10).value
+        mergeIds.append(str(id).lstrip('0'))
 
 
-print("in attend, not in merge:")
-for id in attendIds:
-    if not id in mergeIds:
-        print(id)
+    print("in mansor, not in merge:")
+    for id in attendIds:
+        if not id in mergeIds:
+            print(id)
 
 
-print("int merge, not in attend:")
-for id in mergeIds:
-    if not id in attendIds:
-        print(id)
+    print("in merge, not in mansor:")
+    for id in mergeIds:
+        if not id in attendIds:
+            print(id)
 
+main()
