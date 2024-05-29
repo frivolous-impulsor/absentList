@@ -281,4 +281,3 @@ def test():
     print(len(mergeIds))
 
 main()
-test()
