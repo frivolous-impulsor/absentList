@@ -155,9 +155,9 @@ def setIDsDict(path: str, idDict: dict, isLog: bool):
         endRow = sheet.max_row
     for r in range(startRow, endRow+1):
         id = str(sheet.cell(r, idCol).value)
-        if id != None and id.isnumeric():
+        if id != str(None) and id.isnumeric():
             while len(id) < 9:
-                id = '0'+id                
+                id = '0'+id
             idDict[id] = isLog
 
 def diffIDs(masterPath: str, minorPaths: list[str]) -> dict:
@@ -232,10 +232,11 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
         except ValueError: continue
         endRow = findDataEndingRow(sheet, endTime)
         for row in sheet.iter_rows(min_row=startRow, max_row=endRow):
-            if row[idIdx].value != None:
+            if row[idIdx].value != '' and row[idIdx].value != None:
                 rowVals = [cell.value for cell in row]
                 idVal = rowVals[idIdx]
                 idVal = str(idVal)
+                
                 while len(idVal) < 9:
                     idVal = '0'+ idVal
                 rowVals[idIdx] = idVal 
