@@ -154,8 +154,10 @@ def setIDsDict(path: str, idDict: dict, isLog: bool):
         startRow = findTitleRow(sheet)
         endRow = sheet.max_row
     for r in range(startRow, endRow+1):
-        id = sheet.cell(r, idCol).value
+        id = str(sheet.cell(r, idCol).value)
         if id != None and id.isnumeric():
+            while len(id) < 9:
+                id = '0'+id                
             idDict[id] = isLog
 
 def diffIDs(masterPath: str, minorPaths: list[str]) -> dict:
@@ -225,13 +227,20 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
         logBook = openpyxl.load_workbook(fileAddress)
         sheet = logBook[(logBook.sheetnames)[0]]
         idCod = findColByTitles(sheet, searchField)
+        idIdx = idCod - 1
         try: startRow = findDataStartingRow(sheet, beginTime)
         except ValueError: continue
         endRow = findDataEndingRow(sheet, endTime)
         for row in sheet.iter_rows(min_row=startRow, max_row=endRow):
-            if row[idCod-1].value != None or row[idCod].value != None or row[idCod+1].value != None:
+            if row[idIdx].value != None:
                 rowVals = [cell.value for cell in row]
+                idVal = rowVals[idIdx]
+                idVal = str(idVal)
+                while len(idVal) < 9:
+                    idVal = '0'+ idVal
+                rowVals[idIdx] = idVal 
                 mergeSheet.append(rowVals)
+        
     mergeBook.save(mergeAddress)
         
 
