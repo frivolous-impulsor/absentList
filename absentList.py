@@ -50,7 +50,7 @@ def translateCSV2XLSX(csvAddress: str) -> str:
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     
-    with open(csvAddress) as csvFile:
+    with open(csvAddress, encoding="utf8") as csvFile:
         csvData = csv.reader(csvFile, delimiter=',')
         for row in csvData:
             sheet.append(row)
@@ -134,7 +134,8 @@ def findDataEndingRow(sheet, anchorDateTime: str) -> int:
     anchorDateTime = dateTimeStr2Tuple(anchorDateTime)
     for row in range(titleRow+1, maxRow+1):
         currentDateTime = sheet.cell(row, col).value
-        currentDateTime = dateTimeStr2Tuple(currentDateTime)
+        try: currentDateTime = dateTimeStr2Tuple(currentDateTime)
+        except TypeError: continue
         if currentDateTime[:3] == anchorDateTime[:3]:
             if currentDateTime[3] < anchorDateTime[3] or (currentDateTime[3] == anchorDateTime[3] and currentDateTime[4] <= anchorDateTime[4]): 
                 endRow = row
