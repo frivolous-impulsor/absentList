@@ -1,7 +1,6 @@
 1. Put all check log files in directory "checkInLogs", create it if it's not there
 2. Ensure there's exactly one master file at the root directory
 3. Ensure all files have either "ID" or "student id" as one of the col title
-4. >>>python absentList.py <master_sheet.xlsx> <start date time> <end date time>
-#where master_sheet.xlsx is the name of the master file
-#date time is of form "mm/dd/yy hh:mm:ss" 
-5. Run the command and the absentList.xlsx, attendList.xlsx, and mergedCheckIn.xlsx will be generated in directory "result"
+4. >>>python init.py
+5. Enter the date, starting and ending time of checkin session, and hit confirm
+6. resulting attendList.xlsx, absentList.xlsx, and merged.xlsx will be in "result" subdirectory
