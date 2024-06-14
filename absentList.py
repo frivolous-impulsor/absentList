@@ -114,7 +114,8 @@ def findDataStartingRow(sheet, anchorDateTime:str) -> int:
     anchorDateTime = dateTimeStr2Tuple(anchorDateTime)
     for row in range(titleRow+1, maxRow+1):
         currentDateTime = sheet.cell(row, col).value
-        currentDateTime = dateTimeStr2Tuple(currentDateTime)
+        try: currentDateTime = dateTimeStr2Tuple(currentDateTime)
+        except TypeError: continue
         if currentDateTime[:3] == anchorDateTime[:3]:
             hourI = 3
             minI = 4
