@@ -1,5 +1,6 @@
 #By Mansor and olivger 
 
+import tkinter as tk
 import os
 import sys
 from os import listdir
@@ -11,40 +12,68 @@ import shutil
 from datetime import datetime, timedelta
 import openpyxl.worksheet
 
-possibleColTitle = ["id", "first name", "name", "student id"]
 
+possibleColTitle = ["id", "first name", "name", "student id"]
 searchField = ['id', 'student id']
 myPath = os.getcwd()
-
 logDir = 'checkInLogs'
 logDir = join(myPath, logDir)
 
-def argumentLock() -> bool:
-    argv = sys.argv
-    if len(argv) != 4:
-        raise ValueError("must have 3 arguments, first being the master sheet, second and third being the starting and ending date and time with form mm/dd/yy hh:mm:ss, enclose with \"\"")
-    if not (type(argv[1]) == type(argv[2]) and type(argv[1]) == type("str")):
-        raise ValueError("3 arguments must be of string")
-    argv1 = argv[1]
-    argv2 = argv[2]
-    match1 = re.match(".*xlsx", argv1)
-    match2 = re.match(r"\d+/\d+/\d+ \d+:\d+:\d+", argv2)
-    if not match1:
-        raise ValueError("must be a xlsx file at root directory")
-    if not match2:
-        raise ValueError("must be of form mm/dd/yy hh:mm:ss, enclose with \"\"")
-
-argumentLock()
-beginTime = sys.argv[2]
-endTime = sys.argv[3]
 
 
 
+def getParameters():
+    masterFile: str
+    startTime: str
+    endTime: str
+    def getMasterFile():
+        files = [f for f in os.listdir('.') if (os.path.isfile(f) and "xlsx" in f)]
+        if len(files) != 1:
+            raise ValueError("place exactly one master file in xlsx format at root directory")
+        masterFile = files[0]
+        return masterFile
 
-def getMasterName() -> str:
-    return sys.argv[1]
+    def timeFormCheck(time):
+        return re.match(r"\d+/\d+/\d+ \d+:\d+:\d+", time)
+    
+    window = tk.Tk()
 
+    lblDate = tk.Label(text="Convocation Date: mm/dd/yyyy")
+    entDate = tk.Entry()
 
+    lblStart = tk.Label(text="start time: hh:mm")
+    entStart = tk.Entry()
+    lblEnd = tk.Label(text="end time: hh:mm")
+    entEnd = tk.Entry()
+    def runScript():
+        nonlocal masterFile
+        nonlocal startTime
+        nonlocal endTime
+
+        masterFile = getMasterFile()
+        startTime = f"{entDate.get()} {entStart.get()}:00"
+        endTime = f"{entDate.get()} {entEnd.get()}:00"
+        if not (timeFormCheck(startTime) and timeFormCheck(endTime)):
+            raise ValueError("time form not valid")
+        window.destroy()
+
+    btnConfirm = tk.Button(text="confirm", command=runScript)
+
+    lblDate.pack()
+    entDate.pack()
+    lblStart.pack()
+    entStart.pack()
+    lblEnd.pack()
+    entEnd.pack()
+    btnConfirm.pack()
+    window.mainloop()
+    return (masterFile, startTime, endTime)
+
+parameters = getParameters()
+
+masterFile = parameters[0]
+startTime = parameters[1]
+endTime = parameters[2]
 
 def translateCSV2XLSX(csvAddress: str) -> str:
     workbook = openpyxl.Workbook()
@@ -65,10 +94,10 @@ def ensureXLSX(fileName) -> str:
         return fileName
     if csvExt in fileName and not (excelExt in fileName):
         return translateCSV2XLSX(fileName)
-    raise TypeError("checkInLogs consists files outside xlsx or csv! remove them")
+    raise TypeError("checkInLogs consists files outside xlsx or csv, remove them")
 
 def getLogFiles() -> list[str]:
-    masterName = getMasterName()
+    masterName = parameters
     logFiles = set()
     for fileName in listdir(logDir):
         if masterName == fileName: raise FileExistsError("master file should NOT exist in check in log directory, remove it")
@@ -101,13 +130,14 @@ def dateTimeStr2Tuple(dateTime: str):
     dateTimeTuple = tuple(match.group(i+1) for i in range(6))
     return dateTimeTuple
 
-def removeLeadZero(str: str):
-    str.lstrip('0')
-    if str == '':
-        str = '0'
-    return str
+
 
 def findDataStartingRow(sheet, anchorDateTime:str) -> int:
+    def removeLeadZero(str: str):
+        str.lstrip('0')
+        if str == '':
+            str = '0'
+        return str
     titleRow = findTitleRow(sheet)
     col = findColByTitles(sheet, ['time', 'timestamp'])
     maxRow = sheet.max_row
@@ -149,7 +179,7 @@ def setIDsDict(path: str, idDict: dict, isLog: bool):
     sheet = book[sheetNames[0]]
     idCol = findColByTitles(sheet, searchField)
     if isLog:
-        try: startRow = findDataStartingRow(sheet, beginTime)
+        try: startRow = findDataStartingRow(sheet, startTime)
         except ValueError: return
         endRow = findDataEndingRow(sheet, endTime)
     else:
@@ -178,11 +208,10 @@ def createDir(path) -> int:
 def writeList(idDict, resultDir: str) -> None:
     absentName = "absentList.xlsx"
     attendName = "attendList.xlsx"
-    source = getMasterName()
     absentdst = join(resultDir, absentName)
     attenddst = join(resultDir, attendName)
-    destAbsentAddress = shutil.copyfile(source, absentdst)
-    destAttendAddress = shutil.copyfile(source, attenddst)
+    destAbsentAddress = shutil.copyfile(masterFile, absentdst)
+    destAttendAddress = shutil.copyfile(masterFile, attenddst)
     
     absentBook = openpyxl.load_workbook(destAbsentAddress)
     absentSheet = absentBook[(absentBook.sheetnames)[0]]
@@ -230,7 +259,7 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
         sheet = logBook[(logBook.sheetnames)[0]]
         idCod = findColByTitles(sheet, searchField)
         idIdx = idCod - 1
-        try: startRow = findDataStartingRow(sheet, beginTime)
+        try: startRow = findDataStartingRow(sheet, startTime)
         except ValueError: continue
         endRow = findDataEndingRow(sheet, endTime)
         for row in sheet.iter_rows(min_row=startRow, max_row=endRow):
@@ -248,48 +277,12 @@ def mergeCheckinLogs(logFileAddresses: list, dstDir: str) -> None:
         
 
 def main() -> None:
-    argumentLock()
-    masterFileAddress = getMasterName()
     logFileAddresses = getLogFiles()
-    idDict = diffIDs(masterFileAddress, logFileAddresses)
-
+    idDict = diffIDs(masterFile, logFileAddresses)
     resultDirName = "result"
     createDir(resultDirName)
     writeList(idDict, resultDirName)
-    
     mergeCheckinLogs(logFileAddresses, resultDirName)
 
-def test():
-    attendListBook = openpyxl.load_workbook("result/attendList.xlsx")
-    attendSheet = attendListBook[(attendListBook.sheetnames)[0]]
-
-    mergeBook = openpyxl.load_workbook("result/mergedCheckedIn.xlsx")
-    mergeSheet = mergeBook[(mergeBook.sheetnames)[0]]
-
-    attendIds = []
-    mergeIds = []
-
-    for row in range(1, attendSheet.max_row+1):
-        id = attendSheet.cell(row, 3).value
-        attendIds.append(id)
-
-    for row in range(1, mergeSheet.max_row+1):
-        id = mergeSheet.cell(row, 10).value
-        mergeIds.append(id)
-
-
-    print("in attend, not in merge:")
-    for id in attendIds:
-        if not id in mergeIds:
-            print(id)
-
-
-    print("in merge, not in mansor:")
-    for id in mergeIds:
-        if not id in attendIds:
-            print(id)
-    
-    print(f"{len(attendIds)}ss")
-    print(len(mergeIds))
 
 main()
