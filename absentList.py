@@ -2,32 +2,33 @@
 
 import tkinter as tk
 import os
-import sys
 from os import listdir
 from os.path import isfile, join, exists
 import openpyxl
 import re
 import csv
 import shutil
-from datetime import datetime, timedelta
 import openpyxl.worksheet
 
 
 possibleColTitle = ["id", "first name", "name", "student id"]
 searchField = ['id', 'student id']
 myPath = os.getcwd()
-logDir = 'checkInLogs'
-logDir = join(myPath, logDir)
 
+def getCheckInLogDir():
+    dirs = [o for o in os.listdir('.') if (os.path.isdir(o) and ("check" in o.lower() or "log" in o.lower()))]
+    if len(dirs) == 1:
+        return dirs[0]
+    raise ValueError("only one subdirectory allowed. That being check in logs, being named \"checkInLogs\"")
 
-
+logDir = join(myPath, getCheckInLogDir())
 
 def getParameters():
     masterFile: str
     startTime: str
     endTime: str
     def getMasterFile():
-        files = [f for f in os.listdir('.') if (os.path.isfile(f) and "xlsx" in f)]
+        files = [f for f in os.listdir('.') if (os.path.isfile(f) and ".xlsx" in f)]
         if len(files) != 1:
             raise ValueError("place exactly one master file in xlsx format at root directory")
         masterFile = files[0]
