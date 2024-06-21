@@ -1,6 +1,8 @@
 1. Put all check log files in directory "checkInLogs", create it if it's not there
 2. Ensure there's exactly one xlsx file at the root directory, and that being master sheet
-3. Ensure all files have either "ID" or "student id" as one of the col title, since entire algorithm is based on student id set
-4. >>>dist\absentList\absentList.exe        #copy and run this command after cd to absentList root directory(same level as master sheet)
-5. Enter the date, starting and ending time of checkin session(follow format in that little window), and hit confirm
+3. Ensure all files have either "ID" or "student id" as one of the col title
+4. open command prompt:
+    $cd path\absentList
+    $dist\absentList\absentList.exe
+5. A tkinker window will pop out; Enter the date, starting and ending time of checkin session(follow format above the input box), and hit confirm
 6. resulting attendList.xlsx, absentList.xlsx, and merged.xlsx will be in "result" subdirectory
